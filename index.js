@@ -8,13 +8,8 @@ const UA = require('user-agents');
 const cloudscraper = require('cloudscraper');
 const https = require('https');
 
-// const { createRequire } = require('module');
-// const createdRequire = createRequire(import.meta.url);
-// const { fetch } = require('node-fetch');
-
-// Set up the proxy configuration
 const agent = new https.Agent({
-    rejectUnauthorized: false,  // Allow self-signed certificates if needed
+    rejectUnauthorized: false,
 });
 
 
@@ -31,22 +26,19 @@ function getProxyAgent(proxy) {
 }
 
 function getProxyOptions(proxy) {
-    // console.log(`options ${proxy}`);
     if (proxy.startsWith('socks4') || proxy.startsWith('socks5')) {
-        return { agent: new SocksProxyAgent(proxy) };  // Return SocksProxyAgent for socks proxies
+        return { agent: new SocksProxyAgent(proxy) };
     } else {
-        return { proxy };  // Use direct proxy setting for http/https
+        return { proxy };
     }
 }
 
-// Function to load and randomly pick a proxy source
 async function loadProxiesFromSource(proxySourceFile) {
     const sources = fs.readFileSync(proxySourceFile, 'utf8').split('\n').map(line => line.trim()).filter(line => line);
     if (sources.length === 0) {
         throw new Error('No proxy sources found in proxy_source.txt.');
     }
 
-    // Pick a random source
     const randomSource = sources[Math.floor(Math.random() * sources.length)];
     const [sourceUrl, protocol] = randomSource.split(',');
 
@@ -63,7 +55,6 @@ async function loadProxiesFromSource(proxySourceFile) {
     }
 }
 
-// Function to get UID using a token
 async function getUid(token) {
     const url = 'https://api.aigaea.net/api/auth/session';
     try {
@@ -77,15 +68,12 @@ async function getUid(token) {
         });
         return response.data.data?.uid || null;
     } catch (error) {
-        console.error(`Failed to get UID: ${error.message}`);
+        console.error(`Failed to get UID: ${error}`);
         return null;
     }
 }
 
-// Function to connect to API using a proxy
 async function connectToHttp(uid, token, proxy, deviceId) {
-    // const userAgent = `Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${Math.floor(Math.random() * 100 + 50)}.0 Safari/537.36`;
-    // const agent = getProxyAgent(proxy);
     const userAgent = new UA({ deviceCategory: 'desktop' }).random().toString();
 
     const headers = {
@@ -103,7 +91,7 @@ async function connectToHttp(uid, token, proxy, deviceId) {
         uid,
         browser_id: deviceId,
         timestamp: Math.floor(Date.now() / 1000),
-        version: '1.0.0'
+        version: '1.0.1'
     };
 
     const options = {
@@ -111,22 +99,13 @@ async function connectToHttp(uid, token, proxy, deviceId) {
         uri: url,
         body: JSON.stringify(data),
         headers,
-        timeout: 30000,
+        timeout: 120000,
         proxy: `${proxy}`,
         agent: agent
     };
 
 
     try {
-        // const response = await cloudscraper.post({
-        //     uri: url,
-        //     headers,
-        //     body: JSON.stringify(data),
-        //     timeout: 30000,
-        //     json: true,
-        //     proxy: `${proxy}`,
-        //     agent: agent            
-        // });
         const response = await axios.post(url, data, {
             headers: {
                 Authorization: `Bearer ${token}`,
@@ -134,18 +113,17 @@ async function connectToHttp(uid, token, proxy, deviceId) {
                 'User-Agent': userAgent,
             },
             httpsAgent: getProxyAgent(proxy),
-            timeout: 30000,  // 30 seconds timeout for the request
+            timeout: 120000,
             proxy: false,             
         });
 
         if (response) {
-            // const responseData = await response.json();
-            console.log(`Response: ${response}`);
+            console.log(response.data);
         } else {
             console.error(`Request failed with status: ${response.status}`);
         }
     } catch (error) {
-        console.error(`Error using proxy ${proxy}: ${error.message}`);
+        console.error(`Error using proxy ${proxy}: ${error}`);
     }
 }
 
